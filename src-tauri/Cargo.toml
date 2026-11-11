@@ -35,6 +35,10 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
+[features]
+# Enable when building standalone / release binaries so Tauri embeds `frontendDist` instead of `devUrl`.
+custom-protocol = ["tauri/custom-protocol"]
+
 [lints]
 workspace = true
 

@@ -5,7 +5,8 @@ use crate::core::models::{ConversionSettings, MediaFile, OverwritePolicy};
 use crate::platform;
 use crate::storage::temporary_files::deduplicate_path;
 
-/// Sanitizes an arbitrary filename stem by stripping path separators and Windows-reserved chars.
+/// Sanitizes an arbitrary filename stem by stripping path separators, Windows-reserved characters,
+/// and DOS device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`).
 #[must_use]
 pub fn sanitize_filename_stem(raw: &str) -> String {
     let invalid: &[char] = &['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
@@ -21,10 +22,25 @@ pub fn sanitize_filename_stem(raw: &str) -> String {
         .collect();
     let trimmed = cleaned.trim().trim_matches('.');
     if trimmed.is_empty() {
-        "output".to_string()
-    } else {
-        trimmed.to_string()
+        return "output".to_string();
     }
+
+    let first_segment = trimmed.split('.').next().unwrap_or(trimmed);
+    if is_windows_reserved_device_name(first_segment) {
+        return format!("_{trimmed}");
+    }
+
+    trimmed.to_string()
+}
+
+fn is_windows_reserved_device_name(name: &str) -> bool {
+    const RESERVED: &[&str] = &[
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
+        "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    ];
+    RESERVED
+        .iter()
+        .any(|reserved| name.eq_ignore_ascii_case(reserved))
 }
 
 /// Resolves the output path from template variables, collision avoidance, and overwrite policy.
@@ -145,9 +161,33 @@ fn find_existing_ancestor(path: &Path) -> Option<PathBuf> {
 
 fn paths_match_case_aware(a: &Path, b: &Path) -> bool {
     if cfg!(target_os = "windows") {
-        a.to_string_lossy()
-            .eq_ignore_ascii_case(&b.to_string_lossy())
+        normalize_windows_components(a) == normalize_windows_components(b)
     } else {
-        a == b
+        normalize_lexical_components(a) == normalize_lexical_components(b)
     }
+}
+
+fn normalize_windows_components(path: &Path) -> Vec<String> {
+    normalize_lexical_components(path)
+        .into_iter()
+        .map(|seg| seg.to_ascii_lowercase())
+        .collect()
+}
+
+fn normalize_lexical_components(path: &Path) -> Vec<String> {
+    let mut parts = Vec::new();
+    for comp in path.components() {
+        match comp {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                if matches!(parts.last(), Some(last) if last != "..") {
+                    parts.pop();
+                } else {
+                    parts.push("..".to_string());
+                }
+            }
+            _ => parts.push(comp.as_os_str().to_string_lossy().into_owned()),
+        }
+    }
+    parts
 }

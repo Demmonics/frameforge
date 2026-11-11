@@ -131,9 +131,12 @@ $env:CARGO_TARGET_DIR = "$env:LOCALAPPDATA\frameforge-target"
 
 npx tauri dev -- --toolchain stable-x86_64-pc-windows-gnu
 
-# Release binary:
+# Release standalone binary (embeds built `dist/` bundle via `custom-protocol`):
 npm run build
-cargo +stable-x86_64-pc-windows-gnu build -p frameforge --release
+cargo +stable-x86_64-pc-windows-gnu build -p frameforge --release --features custom-protocol
+
+# Or create an installer bundle via Tauri CLI:
+npx tauri build -- --toolchain stable-x86_64-pc-windows-gnu
 ```
 
 ---

@@ -72,23 +72,9 @@ impl StagedOutput {
         }
 
         let target = match overwrite_policy {
-            OverwritePolicy::Overwrite => {
-                if tokio::fs::try_exists(&self.final_path)
-                    .await
-                    .unwrap_or(false)
-                {
-                    tokio::fs::remove_file(&self.final_path)
-                        .await
-                        .map_err(|source| FrameForgeError::Io {
-                            context: format!(
-                                "removing existing output {}",
-                                self.final_path.display()
-                            ),
-                            source,
-                        })?;
-                }
-                self.final_path.clone()
-            }
+            // `tokio::fs::rename` atomically replaces `final_path` when both paths live in the
+            // same parent directory, preserving the existing file intact if the rename fails.
+            OverwritePolicy::Overwrite => self.final_path.clone(),
             OverwritePolicy::FailIfExists => {
                 if tokio::fs::try_exists(&self.final_path)
                     .await

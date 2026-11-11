@@ -1,11 +1,11 @@
 use std::ffi::OsString;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::conversion::validation::evaluate_conversion_settings;
-use crate::core::errors::Result;
+use crate::core::errors::{FrameForgeError, Result};
 use crate::core::models::{
     AudioMode, CapabilityRegistry, ConversionPlan, ConversionSettings, DecisionKind, MediaFile,
-    RateControlMode, ResolutionPreset, SubtitleMode,
+    QualityImpact, RateControlMode, ResolutionPreset, SubtitleMode,
 };
 use crate::hardware::encoders::{encoder_supports_crf, is_amf, is_nvenc, is_qsv};
 use crate::media::formats::normalize_codec_family;
@@ -20,9 +20,25 @@ pub fn build_conversion_plan(
     settings: &ConversionSettings,
     registry: &CapabilityRegistry,
 ) -> Result<ConversionPlan> {
-    let eval = evaluate_conversion_settings(media, settings, registry);
-    let preview_output_path = resolve_output_path(media, settings, &eval.extension)
-        .unwrap_or_else(|_| Path::new("output").with_extension(&eval.extension));
+    let mut eval = evaluate_conversion_settings(media, settings, registry);
+    let preview_output_path = match resolve_output_path(media, settings, &eval.extension) {
+        Ok(path) => path,
+        Err(err) => {
+            let msg = err.to_string();
+            if eval.errors.is_empty() {
+                eval.summary.clone_from(&msg);
+                eval.quality_explanation =
+                    "Resolve the output path conflict before running this job.".to_string();
+            }
+            eval.errors.push(msg);
+            eval.decision = DecisionKind::Fail;
+            eval.quality_impact = QualityImpact::Incompatible;
+            match err {
+                FrameForgeError::OutputConflict { path } => PathBuf::from(path),
+                _ => Path::new("output").with_extension(&eval.extension),
+            }
+        }
+    };
 
     let ffmpeg_program = registry
         .ffmpeg

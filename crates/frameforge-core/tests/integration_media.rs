@@ -9,7 +9,7 @@ use tempfile::TempDir;
 use frameforge_core::conversion::command_builder::build_conversion_plan;
 use frameforge_core::conversion::profiles::builtin_presets;
 use frameforge_core::conversion::validation::is_safe_token;
-use frameforge_core::core::config::AppConfig;
+use frameforge_core::core::config::{AppConfig, ConcurrencyConfig};
 use frameforge_core::core::errors::FrameForgeError;
 use frameforge_core::core::models::{
     AudioMode, ConversionSettings, DecisionKind, HardwareMode, JobState, OverwritePolicy,
@@ -23,7 +23,7 @@ use frameforge_core::media::metadata::{
 };
 use frameforge_core::media::probe::probe_media_file;
 use frameforge_core::media::thumbnails::generate_thumbnail;
-use frameforge_core::storage::output_manager::resolve_output_path;
+use frameforge_core::storage::output_manager::{resolve_output_path, sanitize_filename_stem};
 
 fn generate_test_mp4(path: &Path, duration_secs: u32, width: u32, height: u32, audio_first: bool) {
     let mut cmd = Command::new("ffmpeg");
@@ -507,4 +507,248 @@ fn unit_tests_progress_metadata_and_validation() {
     assert!(!is_safe_token("high; rm -rf /"));
     assert!(!is_safe_token("high && calc.exe"));
     assert!(!is_safe_token("bad space"));
+
+    // Filename sanitization including Windows reserved device names & traversal chars
+    assert_eq!(sanitize_filename_stem("..\\evil/name:?*"), "_evil_name___");
+    assert_eq!(sanitize_filename_stem("..."), "output");
+    assert_eq!(sanitize_filename_stem("CON"), "_CON");
+    assert_eq!(sanitize_filename_stem("nul"), "_nul");
+    assert_eq!(sanitize_filename_stem("com1.export"), "_com1.export");
+    assert_eq!(sanitize_filename_stem("LPT9"), "_LPT9");
+    assert_eq!(sanitize_filename_stem("normal_clip"), "normal_clip");
+}
+
+#[test]
+fn output_path_guards_same_file_with_mixed_separators() {
+    let tmp = TempDir::new().unwrap();
+    let input_path = tmp.path().join("clip.mp4");
+    let media = frameforge_core::core::models::MediaFile {
+        id: "m1".into(),
+        file_name: "clip.mp4".into(),
+        path: input_path.display().to_string(),
+        size_bytes: 1024,
+        container: frameforge_core::core::models::ContainerInfo {
+            format_name: "mp4".into(),
+            format_long_name: "MP4".into(),
+            probe_score: Some(100),
+        },
+        duration_secs: Some(1.0),
+        bit_rate: None,
+        primary_video: None,
+        primary_audio: None,
+        video_streams: Vec::new(),
+        audio_streams: Vec::new(),
+        subtitle_streams: Vec::new(),
+        chapters_count: 0,
+        creation_time: None,
+        encoder_tag: None,
+        tags: BTreeMap::new(),
+        thumbnail_data_url: None,
+        thumbnail_cache_path: None,
+        technical_report: String::new(),
+        raw_probe_json: String::new(),
+        probed_at_utc: String::new(),
+    };
+    let forward_slash_dir = tmp.path().display().to_string().replace('\\', "/");
+    let settings = ConversionSettings {
+        output_dir: Some(format!("{forward_slash_dir}/.")),
+        filename_pattern: "{name}".into(),
+        overwrite_policy: OverwritePolicy::RenameIfExists,
+        ..Default::default()
+    };
+    let resolved = resolve_output_path(&media, &settings, "mp4").unwrap();
+    assert_ne!(resolved, input_path);
+    assert_eq!(
+        resolved.file_name().unwrap().to_string_lossy(),
+        "clip_out.mp4"
+    );
+}
+
+#[test]
+fn scheduler_requires_active_tokio_runtime() {
+    let scheduler = JobScheduler::new(&ConcurrencyConfig::default());
+    let media = frameforge_core::core::models::MediaFile {
+        id: "m1".into(),
+        file_name: "clip.mp4".into(),
+        path: "C:\\nonexistent\\clip.mp4".into(),
+        size_bytes: 1024,
+        container: frameforge_core::core::models::ContainerInfo {
+            format_name: "mp4".into(),
+            format_long_name: "MP4".into(),
+            probe_score: Some(100),
+        },
+        duration_secs: Some(1.0),
+        bit_rate: None,
+        primary_video: None,
+        primary_audio: None,
+        video_streams: Vec::new(),
+        audio_streams: Vec::new(),
+        subtitle_streams: Vec::new(),
+        chapters_count: 0,
+        creation_time: None,
+        encoder_tag: None,
+        tags: BTreeMap::new(),
+        thumbnail_data_url: None,
+        thumbnail_cache_path: None,
+        technical_report: String::new(),
+        raw_probe_json: String::new(),
+        probed_at_utc: String::new(),
+    };
+    let err = scheduler
+        .enqueue_conversion(
+            media,
+            ConversionSettings::default(),
+            build_dummy_empty_registry(),
+            None,
+        )
+        .unwrap_err();
+    assert!(matches!(err, FrameForgeError::Internal(_)));
+}
+
+fn build_dummy_empty_registry() -> frameforge_core::core::models::CapabilityRegistry {
+    frameforge_core::core::models::CapabilityRegistry {
+        ffmpeg: frameforge_core::core::models::BinaryToolStatus {
+            name: "ffmpeg".into(),
+            available: false,
+            path: None,
+            version: None,
+            configuration: None,
+            error: None,
+        },
+        ffprobe: frameforge_core::core::models::BinaryToolStatus {
+            name: "ffprobe".into(),
+            available: false,
+            path: None,
+            version: None,
+            configuration: None,
+            error: None,
+        },
+        mpv: frameforge_core::core::models::BinaryToolStatus {
+            name: "mpv".into(),
+            available: false,
+            path: None,
+            version: None,
+            configuration: None,
+            error: None,
+        },
+        license_profile: "Unknown".into(),
+        demuxers: Vec::new(),
+        muxers: Vec::new(),
+        decoders: Vec::new(),
+        encoders: Vec::new(),
+        filters: Vec::new(),
+        hwaccels: Vec::new(),
+        hardware_probes: Vec::new(),
+        supported_containers: Vec::new(),
+        probed_at_utc: String::new(),
+    }
+}
+
+#[tokio::test]
+async fn overwrite_fail_if_exists_bitrate_and_audio_strip_validation() {
+    let tmp = TempDir::new().unwrap();
+    let input = tmp.path().join("policy_src.mp4");
+    generate_test_mp4(&input, 1, 320, 240, false);
+
+    let config = AppConfig {
+        probe_hardware_at_startup: false,
+        ..AppConfig::default()
+    };
+    let registry = build_capability_registry(&config).await;
+    let ffprobe_path = PathBuf::from(registry.ffprobe.path.as_ref().unwrap());
+    let media = probe_media_file(&ffprobe_path, &input).await.unwrap();
+
+    // 1. Audio-only extraction with AudioMode::Strip must evaluate to Fail
+    let strip_audio_only = ConversionSettings {
+        container: "mp3".into(),
+        audio_mode: AudioMode::Strip,
+        output_dir: Some(tmp.path().display().to_string()),
+        ..Default::default()
+    };
+    let fail_plan = build_conversion_plan(&media, &strip_audio_only, &registry).unwrap();
+    assert_eq!(fail_plan.decision, DecisionKind::Fail);
+
+    // 2. OverwritePolicy::FailIfExists rejects pre-existing output cleanly at resolve, plan, and enqueue time
+    let existing = tmp.path().join("target_fixed.mp4");
+    std::fs::write(&existing, b"keep-me-intact").unwrap();
+    let fail_exists_settings = ConversionSettings {
+        container: "mp4".into(),
+        video_codec: "h264".into(),
+        hardware_mode: HardwareMode::Cpu,
+        output_dir: Some(tmp.path().display().to_string()),
+        filename_pattern: "target_fixed".into(),
+        overwrite_policy: OverwritePolicy::FailIfExists,
+        ..Default::default()
+    };
+    let resolve_err = resolve_output_path(&media, &fail_exists_settings, "mp4").unwrap_err();
+    assert!(matches!(
+        resolve_err,
+        FrameForgeError::OutputConflict { .. }
+    ));
+
+    let conflict_plan = build_conversion_plan(&media, &fail_exists_settings, &registry).unwrap();
+    assert_eq!(conflict_plan.decision, DecisionKind::Fail);
+    assert_eq!(
+        conflict_plan.resolved_output_path,
+        existing.display().to_string()
+    );
+    assert!(
+        conflict_plan
+            .errors
+            .iter()
+            .any(|e| e.contains("already exists"))
+    );
+
+    let scheduler = JobScheduler::new(&config.concurrency);
+    let enqueue_err = scheduler
+        .enqueue_conversion(media.clone(), fail_exists_settings, registry.clone(), None)
+        .unwrap_err();
+    assert!(matches!(
+        enqueue_err,
+        FrameForgeError::IncompatibleConversion { .. }
+    ));
+    assert_eq!(std::fs::read(&existing).unwrap(), b"keep-me-intact");
+
+    // 3. OverwritePolicy::Overwrite atomically replaces existing file using Bitrate rate control
+    let overwrite_settings = ConversionSettings {
+        container: "mp4".into(),
+        video_codec: "h264".into(),
+        hardware_mode: HardwareMode::Cpu,
+        rate_control: RateControlMode::Bitrate,
+        video_bitrate_kbps: Some(450),
+        audio_mode: AudioMode::Strip,
+        output_dir: Some(tmp.path().display().to_string()),
+        filename_pattern: "target_fixed".into(),
+        overwrite_policy: OverwritePolicy::Overwrite,
+        ..Default::default()
+    };
+    let job = scheduler
+        .enqueue_conversion(media.clone(), overwrite_settings, registry, None)
+        .unwrap();
+
+    let finished = tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            if let Some(cur) = scheduler.store.get(&job.id)
+                && matches!(cur.state, JobState::Completed | JobState::Failed)
+            {
+                return cur;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .unwrap();
+
+    assert_eq!(
+        finished.state,
+        JobState::Completed,
+        "Overwrite bitrate job failed: {:?}",
+        finished.error
+    );
+    let replaced = probe_media_file(&ffprobe_path, &existing).await.unwrap();
+    assert_eq!(replaced.video_streams.len(), 1);
+    assert_eq!(replaced.audio_streams, Vec::new());
+
+    assert_eq!(scheduler.store.remove_finished(), 1);
+    assert_eq!(scheduler.store.list(), Vec::new());
 }
