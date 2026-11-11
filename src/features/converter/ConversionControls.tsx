@@ -371,7 +371,7 @@ export function ConversionControls() {
                           }
                           className="ff-input"
                         >
-                          <option value="crf">Constant Quality (CRF / CQ)</option>
+                          <option value="crf">CRF / CQ Quality</option>
                           <option value="bitrate">Target Bitrate (kbps)</option>
                           <option value="lossless">Lossless</option>
                         </select>

@@ -67,16 +67,16 @@ FRAMEFORGE separates heavy media orchestration into a strict, panic-free Rust en
 │   │   ├── core/               # Errors, config, shared IPC models, event stream
 │   │   ├── media/              # FFprobe inspection, capabilities, formats, thumbnails
 │   │   ├── hardware/           # 1-frame GPU probing, encoder selection & fallback
-│   │   ├── conversion/         # Decision analyzer, typed command builder, transcoder, presets
-│   │   ├── jobs/               # Semaphore-bounded scheduler, queue, progress parser, cancel tokens
-│   │   ├── storage/            # Staged atomic outputs, path collision handling, thumbnail cache
-│   │   ├── platform/           # Windows (`CREATE_NO_WINDOW`, Win32 disk checks), Linux & macOS stubs
+│   │   ├── conversion/         # Decision analyzer, typed command builder, transcoder
+│   │   ├── jobs/               # Bounded scheduler, queue, progress parser, cancel tokens
+│   │   ├── storage/            # Staged atomic outputs, collision handling, thumbnail cache
+│   │   ├── platform/           # Windows (CREATE_NO_WINDOW, Win32 disk check), Linux/macOS
 │   │   ├── playback/           # Domain boundaries prepared for Milestone E (mpv/libmpv)
 │   │   └── editing/            # Domain boundaries prepared for Milestone G (Toolbox)
 │   └── tests/                  # Real FFmpeg/FFprobe integration tests
 ├── src-tauri/                  # Tauri 2 desktop binary & typed IPC command bridge
 ├── src/                        # React + TypeScript presentation layer
-│   ├── features/               # converter/, inspector/, queue/, presets/, dashboard/, settings/, shared/
+│   ├── features/               # converter, inspector, queue, presets, settings, shared
 │   ├── store/                  # Zustand state & Tauri event bindings
 │   └── lib/                    # Typed IPC wrappers & formatters
 └── docs/

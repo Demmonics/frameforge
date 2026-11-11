@@ -222,7 +222,7 @@ pub fn evaluate_conversion(
 }
 
 #[tauri::command]
-pub fn start_conversion(
+pub async fn start_conversion(
     state: State<'_, Arc<AppState>>,
     media: MediaFile,
     settings: ConversionSettings,
@@ -235,7 +235,7 @@ pub fn start_conversion(
 }
 
 #[tauri::command]
-pub fn start_batch_conversion(
+pub async fn start_batch_conversion(
     state: State<'_, Arc<AppState>>,
     items: Vec<MediaFile>,
     settings: ConversionSettings,

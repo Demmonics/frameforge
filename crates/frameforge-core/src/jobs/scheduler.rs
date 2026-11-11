@@ -32,7 +32,8 @@ impl JobScheduler {
     ///
     /// # Errors
     /// Returns [`FrameForgeError::IncompatibleConversion`](crate::core::errors::FrameForgeError::IncompatibleConversion)
-    /// when the validated conversion plan evaluates to [`DecisionKind::Fail`].
+    /// when the validated conversion plan evaluates to [`DecisionKind::Fail`], or
+    /// [`FrameForgeError::Internal`](crate::core::errors::FrameForgeError::Internal) if called without an active Tokio runtime.
     pub fn enqueue_conversion(
         &self,
         media: MediaFile,
@@ -40,6 +41,12 @@ impl JobScheduler {
         registry: CapabilityRegistry,
         event_tx: Option<mpsc::UnboundedSender<CoreEvent>>,
     ) -> crate::core::errors::Result<ConversionJob> {
+        let rt_handle = tokio::runtime::Handle::try_current().map_err(|err| {
+            crate::core::errors::FrameForgeError::Internal(format!(
+                "JobScheduler::enqueue_conversion requires an active Tokio runtime: {err}"
+            ))
+        })?;
+
         let plan = crate::conversion::command_builder::build_conversion_plan(
             &media, &settings, &registry,
         )?;
@@ -87,7 +94,7 @@ impl JobScheduler {
 
         let store = self.store.clone();
         let spawn_job = initial_job.clone();
-        tokio::spawn(async move {
+        rt_handle.spawn(async move {
             let _permit = semaphore.acquire().await;
             execute_conversion_job(
                 ExecutionRequest {
