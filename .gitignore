@@ -1,0 +1,32 @@
+# Rust / Cargo
+/target/
+src-tauri/target/
+**/*.rs.bk
+*.pdb
+
+# Tauri build-generated schemas
+src-tauri/gen/
+
+# Node / Frontend
+node_modules/
+/dist/
+dist-ssr/
+*.local
+*.tsbuildinfo
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Logs & temporary files
+*.log
+npm-debug.log*
+*.tmp
+
+# OS & Editor artifacts
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/

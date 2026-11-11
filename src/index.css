@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light dark;
+
+  --bg-app: light-dark(#eef2f7, #090b10);
+  --bg-rail: light-dark(#e3e9f2, #0d1017);
+  --bg-panel: light-dark(#ffffff, #11151e);
+  --bg-elevated: light-dark(#f6f8fb, #171c28);
+  --bg-input: light-dark(#ffffff, #0c1017);
+  --bg-hover: light-dark(#e8eef7, #1e2535);
+
+  --border-subtle: light-dark(#cbd5e1, #232b3c);
+  --border-strong: light-dark(#94a3b8, #38445c);
+
+  --text-primary: light-dark(#0f172a, #eef2f8);
+  --text-secondary: light-dark(#334155, #b4bfd2);
+  --text-muted: light-dark(#475569, #8492a8);
+
+  --accent-amber: light-dark(#b45309, #f59e0b);
+  --accent-amber-fg: light-dark(#ffffff, #0a0c10);
+  --accent-amber-soft: light-dark(rgba(180, 83, 9, 0.12), rgba(245, 158, 11, 0.16));
+
+  --accent-cyan: light-dark(#0369a1, #38bdf8);
+  --accent-cyan-soft: light-dark(rgba(3, 105, 161, 0.11), rgba(56, 189, 248, 0.14));
+
+  --status-ok: light-dark(#15803d, #22c55e);
+  --status-ok-soft: light-dark(rgba(21, 128, 61, 0.12), rgba(34, 197, 94, 0.15));
+  --status-warn: light-dark(#a16207, #fbbf24);
+  --status-warn-soft: light-dark(rgba(161, 98, 7, 0.12), rgba(251, 191, 36, 0.15));
+  --status-danger: light-dark(#b91c1c, #f87171);
+  --status-danger-soft: light-dark(rgba(185, 28, 28, 0.12), rgba(248, 113, 113, 0.16));
+
+  --scrollbar-track: light-dark(#e5e9f0, #0d1017);
+  --scrollbar-thumb: light-dark(#7c8aa0, #3e4b63);
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: thin;
+  accent-color: var(--accent-amber);
+}
+
+:root:has(> head > meta[name="color-scheme"][content="dark"]) {
+  color-scheme: dark;
+}
+
+:root:has(> head > meta[name="color-scheme"][content="light"]) {
+  color-scheme: light;
+}
+
+@supports not (scrollbar-color: auto) {
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 5px;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-mono-tech {
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.ff-input {
+  width: 100%;
+  min-height: 2rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  padding: 0.25rem 0.55rem;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+
+.ff-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --border-subtle: light-dark(#475569, #7c8aa0);
+    --border-strong: light-dark(#0f172a, #cbd5e1);
+  }
+}
+
+@media (forced-colors: active) {
+  :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+progress.ff-progress {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  overflow: hidden;
+  background-color: var(--bg-elevated);
+}
+
+progress.ff-progress::-webkit-progress-bar {
+  background-color: var(--bg-elevated);
+  border-radius: 999px;
+}
+
+progress.ff-progress::-webkit-progress-value {
+  background: linear-gradient(90deg, var(--accent-amber), var(--accent-cyan));
+  border-radius: 999px;
+}
+
+progress.ff-progress::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--accent-amber), var(--accent-cyan));
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ff-panel-transition {
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+  }
+  .ff-pulse-dot {
+    animation: ff-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+@keyframes ff-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
