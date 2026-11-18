@@ -20,10 +20,42 @@ function MainWorkspace() {
   const handleJobLogEvent = useAppStore((s) => s.handleJobLogEvent);
   const handleCapabilitiesEvent = useAppStore((s) => s.handleCapabilitiesEvent);
 
+  const setActiveView = useAppStore((s) => s.setActiveView);
+
   useEffect(() => {
     void initialize();
 
-    if (!isTauriRuntime()) return;
+    const handleHash = () => {
+      const raw = window.location.hash.replace("#", "");
+      const [viewPart, queryPart] = raw.split("?");
+      const validViews = [
+        "dashboard",
+        "converter",
+        "inspector",
+        "queue",
+        "presets",
+        "settings",
+        "player",
+        "toolbox",
+      ];
+      if (validViews.includes(viewPart)) {
+        setActiveView(viewPart as any);
+      }
+      const search = new URLSearchParams(queryPart || window.location.search);
+      const lvl = search.get("level");
+      if (lvl && ["simple", "advanced", "expert"].includes(lvl)) {
+        useAppStore.getState().setInterfaceLevel(lvl as any);
+      }
+    };
+
+    window.addEventListener("hashchange", handleHash);
+    handleHash();
+
+    if (!isTauriRuntime()) {
+      return () => {
+        window.removeEventListener("hashchange", handleHash);
+      };
+    }
     let unlisten: (() => void) | undefined;
     let active = true;
 
@@ -46,10 +78,12 @@ function MainWorkspace() {
 
     return () => {
       active = false;
+      window.removeEventListener("hashchange", handleHash);
       if (unlisten) unlisten();
     };
   }, [
     initialize,
+    setActiveView,
     importPaths,
     setDraggingFiles,
     handleJobUpdatedEvent,

@@ -8,6 +8,69 @@ FRAMEFORGE separates heavy media orchestration into a strict, panic-free Rust en
 
 ---
 
+## Visual Studio Tour & Screenshots
+
+| Workspace View | Description |
+| --- | --- |
+| [**Converter Studio**](#1-universal-converter-workspace) | Multi-clip media bin, 4K preview stage, real-time decision engine, and live progress dock |
+| [**Studio Overview**](#2-studio-overview--hardware-acceleration-diagnostics) | Live FFmpeg capabilities, 1-frame GPU probe telemetry, and active worker stats |
+| [**Deep Media Inspector**](#3-deep-ffprobe-media-inspector) | Stream-by-stream container analysis, HDR10 MaxCLL metadata, and exportable reports |
+| [**Expert Parameter Controls**](#4-expert-parameter-controls--validated-command-preview) | Zero-shell token-validated options with live syntax-highlighted command preview |
+| [**Batch Transcoding Queue**](#5-real-time-job-queue--bounded-hardware-scheduling) | Bounded CPU/GPU semaphores, live ETA / speed multiplier, and atomic staging |
+| [**Preset Catalog**](#6-verified-built-in-export-presets) | 1-click delivery, lossless remux, ProRes/DNxHR intermediate, and archival presets |
+| [**Settings & Diagnostics**](#7-settings--binary-discovery) | Binary discovery overrides, 3-state dark/light theme, and worker concurrency limits |
+
+---
+
+### 1. Universal Converter Workspace
+> Multi-clip media bin with drag-and-drop import, rich stream summaries (4K UHD, HDR10 PQ, 10-bit 4:2:2, 5.1 Surround), real-time quality decision banner (`COPY`, `REMUX`, `TRANSCODE`), and live transcoding dock.
+
+![Universal Converter Workspace](docs/screenshots/02_converter_workspace.png)
+
+---
+
+### 2. Studio Overview & Hardware Acceleration Diagnostics
+> Instant diagnostic dashboard probing the local FFmpeg engine, 1-frame null-mux verified GPU hardware encoders (NVIDIA NVENC AV1/HEVC/H264, AMD AMF, Intel QSV), format multiplexers, and system session stats.
+
+![Studio Overview](docs/screenshots/01_dashboard.png)
+
+---
+
+### 3. Deep FFprobe Media Inspector
+> Full container, video, audio, and subtitle stream telemetry: container probe score, DAR/SAR, constant vs. variable frame rate (VFR) detection, color primaries (BT.2020), mastering display luminance, MaxCLL/MaxFALL, and copyable technical ASCII reports.
+
+![Deep FFprobe Media Inspector](docs/screenshots/04_media_inspector.png)
+
+---
+
+### 4. Expert Parameter Controls & Validated Command Preview
+> Three interface tiers (`Simple`, `Advanced`, `Expert`). Expert mode validates arguments strictly into typed `Vec<OsString>` tokens with zero OS shell interpolation and renders a real-time command preview.
+
+![Expert Parameter Controls & Validated Command Preview](docs/screenshots/03_converter_expert.png)
+
+---
+
+### 5. Real-Time Job Queue & Bounded Hardware Scheduling
+> Real-time conversion tracking parsing `-progress pipe:1` metrics (`%`, `FPS`, `speed ratio`, `bitrate`, `ETA`). Enforces strict bounded concurrency semaphores to protect system responsiveness, backed by atomic staged file writes.
+
+![Real-Time Job Queue](docs/screenshots/05_queue_transcoding.png)
+
+---
+
+### 6. Verified Built-In Export Presets
+> Curated presets checked dynamically against installed FFmpeg muxers and encoders at startup: Universal Delivery (`H.264`, `HEVC`, `AV1`), Lossless Remux (`Stream Copy to MKV`), Editing Intermediate (`Apple ProRes 422`, `Avid DNxHR HQ`), and Archival (`Lossless FFV1`, `FLAC`).
+
+![Verified Built-In Export Presets](docs/screenshots/06_presets_catalog.png)
+
+---
+
+### 7. Settings & Binary Discovery
+> Runtime binary path discovery and overrides for `ffmpeg`, `ffprobe`, and `mpv`, CPU/GPU worker limits, licensing profile audits, and explicit System / Dark / Light theme preferences.
+
+![Settings & Engine Diagnostics](docs/screenshots/07_settings_engine.png)
+
+---
+
 ## Core Design Principles
 
 - **Zero Shell Interpolation**: Builds typed `Vec<OsString>` argument lists for `ffmpeg` and `ffprobe`; expert options are token-validated and never executed through an OS shell.

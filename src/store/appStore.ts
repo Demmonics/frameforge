@@ -11,6 +11,14 @@ import type {
   SerializableError,
 } from "../types/media";
 import * as api from "../lib/tauri";
+import {
+  MOCK_CAPABILITIES,
+  MOCK_CONFIG,
+  MOCK_CONVERSION_PLAN,
+  MOCK_JOBS,
+  MOCK_MEDIA_ITEMS,
+  MOCK_PRESETS,
+} from "../lib/mockData";
 
 export type AppView =
   | "dashboard"
@@ -162,7 +170,37 @@ export const useAppStore = create<AppStoreState>((set, get) => ({
 
   initialize: async () => {
     if (!api.isTauriRuntime()) {
-      set({ initialized: true });
+      const hash = typeof window !== "undefined" ? window.location.hash.replace("#", "") : "";
+      const [viewPart, hashQuery] = hash.split("?");
+      const searchParams =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search || hashQuery || "")
+          : null;
+      const paramLevel = searchParams?.get("level") as ConversionInterfaceLevel | null;
+      const validLevels: ConversionInterfaceLevel[] = ["simple", "advanced", "expert"];
+      const validViews: AppView[] = [
+        "dashboard",
+        "converter",
+        "inspector",
+        "queue",
+        "presets",
+        "settings",
+        "player",
+        "toolbox",
+      ];
+      set({
+        initialized: true,
+        capabilities: MOCK_CAPABILITIES,
+        config: MOCK_CONFIG,
+        presets: MOCK_PRESETS,
+        mediaItems: MOCK_MEDIA_ITEMS,
+        selectedMediaIds: ["media-arri-4k"],
+        activeMediaId: "media-arri-4k",
+        jobs: MOCK_JOBS,
+        plan: MOCK_CONVERSION_PLAN,
+        interfaceLevel: paramLevel && validLevels.includes(paramLevel) ? paramLevel : "advanced",
+        activeView: validViews.includes(viewPart as AppView) ? (viewPart as AppView) : "dashboard",
+      });
       return;
     }
     try {
@@ -343,8 +381,11 @@ export const useAppStore = create<AppStoreState>((set, get) => ({
   evaluateCurrentPlan: async () => {
     const { mediaItems, activeMediaId, settings } = get();
     const media = mediaItems.find((m) => m.id === activeMediaId);
-    if (!media || !api.isTauriRuntime()) {
+    if (!media) {
       set({ plan: null, planLoading: false });
+      return;
+    }
+    if (!api.isTauriRuntime()) {
       return;
     }
     set({ planLoading: true });

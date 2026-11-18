@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -45,6 +45,13 @@ export function ConversionControls() {
   const startBatchConversion = useAppStore((s) => s.startBatchConversion);
 
   const [copiedCmd, setCopiedCmd] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (interfaceLevel === "expert" && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [interfaceLevel]);
 
   const activeMedia = mediaItems.find((m) => m.id === activeMediaId) ?? null;
   const availableContainers =
@@ -220,7 +227,7 @@ export function ConversionControls() {
       </div>
 
       {/* Scrollable Settings Controls */}
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3.5 text-xs">
+      <div ref={scrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3.5 text-xs">
         {/* Container Selection */}
         <FieldGroup label="Target Format / Container" htmlFor="ctl-container">
           <select
